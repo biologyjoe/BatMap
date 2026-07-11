@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BATMAP 2.0</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f4f7f2; --bg2: #eaf0e7; --surface: #ffffff; --border: #d0e8d0;
+      --text: #1a2e1e; --text2: #4a6b52; --primary: #2d6a4f; --accent: #52b788;
+      --shadow: 0 2px 14px rgba(0,0,0,.07); --nav-h: 64px;
+    }
+    html.dark {
+      --bg: #0c1a0e; --bg2: #101f12; --surface: #152017; --border: #253d27;
+      --text: #dff0e2; --text2: #7ab882; --primary: #52b788; --accent: #74c69d;
+      --shadow: 0 2px 14px rgba(0,0,0,.3);
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); transition: background .25s, color .25s; overflow-x: hidden; }
+    #root { min-height: 100vh; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .leaflet-popup-content-wrapper { border-radius: 12px !important; box-shadow: 0 6px 24px rgba(0,0,0,.18) !important; }
+    .leaflet-popup-content { margin: 14px 18px !important; font-family: 'Inter', sans-serif !important; }
+    .leaflet-popup-tip-container { display: none; }
+    button { font-family: 'Inter', sans-serif; }
+    a { color: inherit; }
+
+    /* ── Responsive helpers ─────────────────────────────────────────── */
+    .bm-hide-mobile { display: initial; }
+    .bm-only-mobile { display: none !important; }
+    .bm-nav { padding: 0 28px; gap: 4px; }
+    .bm-mapshell { display: flex; height: calc(100vh - 64px); margin-top: 64px; }
+    .bm-mapshell-sidebar {
+      width: 290px; background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; flex-shrink: 0;
+      overflow-y: auto;
+    }
+    .bm-mapshell-main { flex: 1; position: relative; min-width: 0; }
+    .bm-drawer-toggle {
+      display: none;
+      position: absolute; top: 12px; left: 12px; z-index: 600;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 12px; cursor: pointer;
+      font-weight: 600; font-size: 13px; color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    }
+    .bm-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .bm-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+
+    @media (max-width: 760px) {
+      .bm-hide-mobile { display: none !important; }
+      .bm-only-mobile { display: flex !important; }
+      .bm-nav { padding: 0 14px; gap: 2px; }
+
+      .bm-mapshell { flex-direction: column; height: calc(100vh - 64px); }
+      .bm-mapshell-sidebar {
+        position: fixed; top: 64px; left: 0; bottom: 0;
+        width: 86%; max-width: 340px; z-index: 1500;
+        transform: translateX(-100%); transition: transform .25s ease;
+        box-shadow: 4px 0 24px rgba(0,0,0,.18);
+      }
+      .bm-mapshell.open .bm-mapshell-sidebar { transform: translateX(0); }
+      .bm-mapshell.open::after {
+        content: ''; position: fixed; top: 64px; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,.35); z-index: 1400;
+      }
+      .bm-drawer-toggle { display: block; }
+
+      .bm-grid-4 { grid-template-columns: 1fr 1fr; }
+      .bm-grid-2 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 460px) {
+      .bm-grid-4 { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <template id="__bundler_thumbnail">
+    <svg viewBox="0 0 80 56" xmlns="http://www.w3.org/2000/svg">
+      <rect width="80" height="56" fill="#0c1a0e"/>
+      <ellipse cx="40" cy="32" rx="7" ry="8" fill="#52b788"/>
+      <path d="M33 30Q22 18 8 23Q13 29 20 31Q26 25 33 30Z" fill="#52b788"/>
+      <path d="M47 30Q58 18 72 23Q67 29 60 31Q54 25 47 30Z" fill="#52b788"/>
+      <path d="M36 24L33 13L40 22Z" fill="#52b788"/>
+      <path d="M44 24L47 13L40 22Z" fill="#52b788"/>
+      <text x="40" y="52" font-size="7" fill="#52b788" text-anchor="middle" font-family="sans-serif" font-weight="bold">BATMAP</text>
+    </svg>
+  </template>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="batmap-data.js"></script>
+  <script type="text/babel" src="batmap-ui.jsx"></script>
+  <script type="text/babel" src="batmap-maps.jsx"></script>
+  <script type="text/babel" src="batmap-app.jsx"></script>
+</body>
+</html>
